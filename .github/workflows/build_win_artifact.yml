@@ -1,0 +1,59 @@
+# See also https://docs.github.com/en/actions/learn-github-actions/expressions
+# See also https://github.com/marketplace/actions/setup-android-ndk
+
+name: build_win_artifact
+
+on: workflow_dispatch
+
+jobs:
+  build_and_save:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build:
+#        - linux-gcc
+#        - linux-powerpc64-gcc
+        - linux-mingw64-gcc
+        include:
+#        - build: linux-gcc
+#          cc: gcc        
+#        - build: linux-powerpc64-gcc
+#          cc: gcc
+#          host: powerpc64-linux-gnu
+        - build: linux-mingw64-gcc
+          cc: gcc
+          host: x86_64-w64-mingw32
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Ubuntu packages
+        run: |
+          sudo apt-get -q update
+          case "${{matrix.host}}" in                                        \
+            x86_64-w64-mingw32)                                             \
+              sudo apt-get -q install -y binutils-mingw-w64 gcc-mingw-w64;; \
+            powerpc64-linux-gnu)                                            \
+              sudo apt-get -q install -y binutils-powerpc64-linux-gnu       \
+              gcc-powerpc64-linux-gnu;;                                     \
+          esac
+      - name: Build
+        run: |
+          ./autogen.sh
+          ./configure --host=${{matrix.host}} \
+              CC=${{ matrix.host && format('{0}-{1}', matrix.host, matrix.cc) || matrix.cc }} \
+              CFLAGS="-Wall -Wextra -Werror -Wno-sign-compare -Wno-unused-function -Wno-unused-parameter ${{matrix.cflags}}"
+          make
+      - name: artifact save
+        uses: actions/upload-artifact@v4
+        with:
+          name: temp_win_artifact
+          path: |
+            config.h
+            config.status
+            Makefile
+            include
+            lib
+            doc
+            src
+            scripts
+
