@@ -29,19 +29,11 @@ jobs:
       - name: Install Ubuntu packages
         run: |
           sudo apt-get -q update
-          case "${{matrix.host}}" in                                        \
-            x86_64-w64-mingw32)                                             \
-              sudo apt-get -q install -y binutils-mingw-w64 gcc-mingw-w64;; \
-            powerpc64-linux-gnu)                                            \
-              sudo apt-get -q install -y binutils-powerpc64-linux-gnu       \
-              gcc-powerpc64-linux-gnu;;                                     \
-          esac
+          sudo apt-get -q install -y binutils-mingw-w64 gcc-mingw-w64
       - name: Build
         run: |
           ./autogen.sh
-          ./configure --host=${{matrix.host}} \
-              CC=${{ matrix.host && format('{0}-{1}', matrix.host, matrix.cc) || matrix.cc }} \
-              CFLAGS="-Wall -Wextra -Werror -Wno-sign-compare -Wno-unused-function -Wno-unused-parameter ${{matrix.cflags}}"
+          ./configure --host=x86_64-w64-mingw32 --enable-win32-spt-direct  --enable-static --enable-shared=no
           make
       - name: artifact save
         uses: actions/upload-artifact@v4
