@@ -12,15 +12,8 @@ jobs:
       fail-fast: false
       matrix:
         build:
-#        - linux-gcc
-#        - linux-powerpc64-gcc
         - linux-mingw64-gcc
         include:
-#        - build: linux-gcc
-#          cc: gcc        
-#        - build: linux-powerpc64-gcc
-#          cc: gcc
-#          host: powerpc64-linux-gnu
         - build: linux-mingw64-gcc
           cc: gcc
           host: x86_64-w64-mingw32
@@ -38,14 +31,10 @@ jobs:
       - name: artifact save
         uses: actions/upload-artifact@v4
         with:
-          name: temp_win_artifact
-          path: |
-            config.h
-            config.status
-            Makefile
-            include
-            lib
-            doc
-            src
-            scripts
-
+          name: kitchensink
+          path: ~/
+      - name: artifact save
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries_only
+          path: scripts/*exe
