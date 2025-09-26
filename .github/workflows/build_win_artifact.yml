@@ -28,11 +28,13 @@ jobs:
           ./autogen.sh
           ./configure --host=x86_64-w64-mingw32 --enable-win32-spt-direct  --enable-static --enable-shared=no
           make
-      - name: artifact save
+      - name: 'Tar files'
+        run: tar -cvf buildstuff.tar /home/runner/work/sg3_utils
+      - name: full artifact save
         uses: actions/upload-artifact@v4
         with:
           name: kitchensink
-          path: ~/**
+          path: buildstuff.tar
       - name: artifact save
         uses: actions/upload-artifact@v4
         with:
