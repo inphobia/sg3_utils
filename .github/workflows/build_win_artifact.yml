@@ -28,15 +28,12 @@ jobs:
           ./autogen.sh
           ./configure --host=x86_64-w64-mingw32 --enable-win32-spt-direct  --enable-static --enable-shared=no
           make
-      - name: 'Tar files'
-        run: tar -cvf buildstuff.tar /home/runner/work/sg3_utils
-      - name: full artifact save
-        uses: actions/upload-artifact@v4
-        with:
-          name: kitchensink
-          path: buildstuff.tar
+      - name: makedirs
+        run: |
+          mkdir -p ~/winbins
+          cp ${{ github.workspace }}/src/*exe ~/winbins
       - name: artifact save
         uses: actions/upload-artifact@v4
         with:
           name: binaries_only
-          path: scripts/*exe
+          path: ~/winbins/*
