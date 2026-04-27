@@ -36,6 +36,23 @@ bin_PROGRAMS += sg_scan
 sg_scan_SOURCES += sg_scan_win32.c
 endif
 
+if NEED_GETOPT_H
+# Ensure replacement getopt.h copied to include directory before anything
+# needs it
+BUILT_SOURCES = include/getopt.h
+
+# Don't need this: '$(AM_V_GEN) mkdir -p include'
+include/getopt.h: $(top_srcdir)/lib/getopt.h
+	$(AM_V_GEN) cp $(top_srcdir)/lib/getopt.h $(top_srcdir)/include/getopt.h
+
+EXTRA_INCLUDE = -isystem $(top_srcdir)/include
+
+else
+
+EXTRA_INCLUDE =
+
+endif
+
 # This is active if --enable-debug given to ./configure
 # removed -Wduplicated-branches because needs gcc-8
 if DEBUG
@@ -61,7 +78,7 @@ endif
 
 # -std=<s> can be c99, c11, gnu11, etc. Default is gnu11
 # -Wall is no longer all warnings. Add -W (since renamed to -Wextra) for more
-AM_CPPFLAGS = -iquote ${top_srcdir}/include -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 $(DBG_CPPFLAGS)
+AM_CPPFLAGS = $(EXTRA_INCLUDE) -iquote ${top_srcdir}/include -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 $(DBG_CPPFLAGS)
 AM_CFLAGS = -Wall -W -std=c99 $(DBG_CFLAGS)
 # AM_CFLAGS = -Wall -W -std=c99 -fanalyzer $(DBG_CFLAGS)
 # AM_CFLAGS = -Wall -W -flto=auto $(DBG_CFLAGS)

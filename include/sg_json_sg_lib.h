@@ -1,8 +1,8 @@
-#ifndef SG_JSON_SENSE_H
-#define SG_JSON_SENSE_H
+#ifndef SG_JSON_SG_LIB_H
+#define SG_JSON_SG_LIB_H
 
 /*
- * Copyright (c) 2023 Douglas Gilbert.
+ * Copyright (c) 2023-2026 Douglas Gilbert.
  * All rights reserved.
  * Use of this source code is governed by a BSD-style
  * license that can be found in the BSD_LICENSE file.
@@ -20,7 +20,10 @@
 extern "C" {
 #endif
 
-/* These functions' implementations depend on code in sg_lib.c */
+/* These JSON support functions' implementations depend on code in
+ * the rest of sg_lib.c . Since sg_json.h is included above, once this
+ * header is included, there is no need to include sg_json.h . */
+
 
 /* This function only produces JSON output if jsp is non-NULL and
  * jsp->pr_as_json is true. 'sbp' is assumed to point to sense data as
@@ -40,9 +43,9 @@ bool sgj_js_designation_descriptor(sgj_state * jsp, sgj_opaque_p jop,
  * function does nothing. If jsp->exit_status is true then a new JSON object
  * named "exit_status" and the 'exit_status' value rendered as a JSON integer
  * is appended to jsp->basep. The in-core JSON tree with jsp->basep as its
- * root is streamed to 'fp'.
+ * root is streamed to 'fp' which is assumed to be non-NULL.
  * Uses exit_status to call sg_lib::sg_exit2str() and then calls
- * sg_json::xxxxxx */
+ * sg_json::sgj_js2file_estr() */
 void sgj_js2file(sgj_state * jsp, sgj_opaque_p jop, int exit_status,
                  FILE * fp);
 
@@ -50,4 +53,4 @@ void sgj_js2file(sgj_state * jsp, sgj_opaque_p jop, int exit_status,
 }
 #endif
 
-#endif
+#endif          /* SG_JSON_SG_LIB_H */

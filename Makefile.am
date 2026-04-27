@@ -8,6 +8,7 @@ SUBDIRS = \
 
 EXTRA_DIST = \
 	autogen.sh \
+	bootstrap \
 	COVERAGE \
 	CREDITS \
 	BSD_LICENSE \
@@ -64,10 +65,6 @@ EXTRA_DIST += \
 	examples/sg_unmap_example.txt \
 	examples/transport_ids.txt \
 	examples/Makefile
-
-EXTRA_DIST += \
-	getopt_long/getopt.h \
-	getopt_long/getopt_long.c
 
 EXTRA_DIST += \
 	include/freebsd_nvme_ioctl.h

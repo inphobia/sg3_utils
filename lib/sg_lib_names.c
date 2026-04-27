@@ -19,6 +19,12 @@
 #include "sg_lib_data.h"
 #include "sg_lib_names.h"
 
+/*
+ * Note that this file (sg_lib_names.c) and sg_lib_data.c hold similar forms
+ * of information; namely const tables (arrays) derived from T10 drafts and
+ * standards. A version number for sg_lib is in sg_lib_data.c .
+ */
+
 /* List of SPC, then SBC, the ZBC mode page names. Tape and other mode pages
  * are squeezed into this list as long as they don't conflict.
  * The value is: (mode_page << 8) | mode_subpage
@@ -409,6 +415,7 @@ const struct sg_lib_simple_value_name_t sg_lib_version_descriptor_arr[] = {
     {0x960, "iSCSI (no version claimed)"},
     {0x961, "iSCSI RFC 7143 iSCSIProtocolLevel=1"},
     {0x962, "iSCSI RFC 7144 iSCSIProtocolLevel=2"},
+    /* from 0x963 to 0x97f should not be used according to RFC 7144 */
     {0x963, "iSCSI RFC 7144 iSCSIProtocolLevel=3"},
     {0x964, "iSCSI RFC 7144 iSCSIProtocolLevel=4"},
     {0x965, "iSCSI RFC 7144 iSCSIProtocolLevel=5"},
