@@ -6,7 +6,7 @@ This directory contains these utilities:
     an ASCII interpretation to the right of each line. See its
     hxascdmp(1) man page.
   - sg_chk_asc and tst_sg_lib: are no longer here, they have been moved
-    to the 'testing' directory (a sibling of this directory).
+    to the 'ttesting' directory (a sibling of this directory).
 
 
 By default, the Makefile only builds the hxascdmp utility. The 'Makefile'
@@ -16,5 +16,9 @@ builds for FreeBSD (e.g. 'make -f Makefile.freebsd'); the
 in the Windows MinGW environment (e.g.  msys shell); and 'Makefile.cygwin'
 builds in the Windows Cygwin environment.
 
+hxasdmp.1 is a manpage for this utility and can be viewed, without
+installing it, like this:
+    man ./hxascdmp.1
+
 Douglas Gilbert
-4th November 2017
+5th May 2026

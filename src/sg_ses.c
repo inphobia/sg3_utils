@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004-2023 Douglas Gilbert.
+ * Copyright (c) 2004-2026 Douglas Gilbert.
  * All rights reserved.
  * Use of this source code is governed by a BSD-style
  * license that can be found in the BSD_LICENSE file.
@@ -41,7 +41,7 @@
  * commands tailored for SES (enclosure) devices.
  */
 
-static const char * version_str = "2.86 20230623";    /* ses4r04 */
+static const char * version_str = "2.88 20260526";    /* ses4r05 */
 
 #define MY_NAME "sg_ses"
 
@@ -1023,6 +1023,11 @@ usage(int help_num)
         other_usage(true);
         pr2serr("   corresponding shorter form:\n");
         other_usage(false);
+        pr2serr("\nFirst usage above is for fetching pages or fields from "
+            "a SCSI enclosure.\nThe second usage is for changing a page or "
+            "field in an enclosure. For\nmore information use '--help' (or "
+            "'-h'). Use '-hhhh' for examples.\n"
+            );
     } else if (1 == help_num) {
         pr2serr("Usage for general access:\n");
         gen_usage(true);
@@ -1038,6 +1043,8 @@ usage(int help_num)
             "only\n"
             "    --get=STR|-G STR    get value of field by acronym or "
             "position\n"
+            "    --help|-h           print out usage message, use multiple "
+            "times for more\n"
             "    --index=IIA|-I IIA    individual index ('-1' for overall) "
             "or element\n"
             "                          type abbreviation (e.g. 'arr'). A "
@@ -5880,7 +5887,7 @@ truncated:
 
 /* Reads hex data from command line, stdin or a file when in_hex is true.
  * Reads binary from stdin or file when in_hex is false. Returns 0 on
- * success. If inp is a file and may_have_at, then the
+ * success. If inp is a file and may_have_at is true, then the
  * first character is skipped to get filename (since it should be '@'). */
 static int
 read_hex(const char * inp, uint8_t * arr, int mx_arr_len, int * arr_len,
@@ -6093,12 +6100,12 @@ read_hex(const char * inp, uint8_t * arr, int mx_arr_len, int * arr_len,
         pr2serr("%s: user provided data:\n", __func__);
         hex2stderr(arr, *arr_len, 0);
     }
-    if (fp && (fp != stdin))
+    if (fp && (! has_stdin))
         fclose(fp);
     return 0;
 
 err_with_fp:
-    if (fp && (fp != stdin))
+    if (fp && (! has_stdin))
         fclose(fp);
     return SG_LIB_SYNTAX_ERROR;
 }
@@ -6780,7 +6787,11 @@ join_array_display(struct th_es_t * tesp, struct opts_t * op,
         if (jsp->pr_as_json) {
             jo2p = sgj_new_unattached_object_r(jsp);
             sgj_js_nv_ihexstr(jsp, jo2p, et_sn, jrp->etype, NULL, cp);
-            sgj_js_nv_s(jsp, jo2p, "descriptor", (const char *)(ed_bp + 4));
+            if (ed_bp)
+                sgj_js_nv_s(jsp, jo2p, "descriptor",
+                            (const char *)(ed_bp + 4));
+            else
+                sgj_js_nv_s(jsp, jo2p, "descriptor", "<null>");
             sgj_js_nv_i(jsp, jo2p, "element_number", jrp->indiv_i);
             sgj_js_nv_i(jsp, jo2p, "overall", (int)(-1 == jrp->indiv_i));
             sgj_js_nv_b(jsp, jo2p, "individual", (-1 != jrp->indiv_i));
@@ -6812,7 +6823,7 @@ join_array_display(struct th_es_t * tesp, struct opts_t * op,
         }
         if (jsp->pr_as_json)
             sgj_js_nv_o(jsp, jap, NULL /* name */, jo2p);
-    }
+    }           /* end of for loop over MX_JOIN_ROWS */
     if (! got1) {
         if (op->ind_given) {
             n = sg_scnpr(b, blen, "      >>> no match on --index=%d,%d",

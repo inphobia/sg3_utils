@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2023 Douglas Gilbert.
+ * Copyright (c) 2006-2026 Douglas Gilbert.
  * All rights reserved.
  * Use of this source code is governed by a BSD-style
  * license that can be found in the BSD_LICENSE file.
@@ -330,42 +330,61 @@ decode_rdac_vpd_c0(uint8_t * buff, int len)
     int memsize;
     char name[65];
 
-    if (len < 3) {
+    if (len < 8) {
         pr2serr("Hardware Version VPD page length too short=%d\n", len);
         return;
     }
-    if (buff[4] != 'h' && buff[5] != 'w' && buff[6] != 'r') {
+    if (buff[4] != 'h' || buff[5] != 'w' || buff[6] != 'r') {
         pr2serr("Invalid page identifier %c%c%c%c, decoding not possible.\n",
                 buff[4], buff[5], buff[6], buff[7]);
         return;
     }
-    printf("  Number of channels: %x\n", buff[8]);
-    memsize = sg_get_unaligned_be16(buff + 10);
-    printf("  Processor Memory Size: %d\n", memsize);
-    memset(name, 0, 65);
-    memcpy(name, buff + 16, 64);
-    printf("  Board Name: %s\n", name);
-    memset(name, 0, 65);
-    memcpy(name, buff + 80, 16);
-    printf("  Board Part Number: %s\n", name);
-    memset(name, 0, 65);
-    memcpy(name, buff + 96, 12);
-    printf("  Schematic Number: %s\n", name);
-    memset(name, 0, 65);
-    memcpy(name, buff + 108, 4);
-    printf("  Schematic Revision Number: %s\n", name);
-    memset(name, 0, 65);
-    memcpy(name, buff + 112, 16);
-    printf("  Board Serial Number: %s\n", name);
-    memset(name, 0, 65);
-    memcpy(name, buff + 144, 8);
-    printf("  Date of Manufacture: %s\n", name);
-    memset(name, 0, 65);
-    memcpy(name, buff + 152, 2);
-    printf("  Board Revision: %s\n", name);
-    memset(name, 0, 65);
-    memcpy(name, buff + 154, 4);
-    printf("  Board Identifier: %s\n", name);
+    if (len > 8)
+        printf("  Number of channels: %x\n", buff[8]);
+    if (len > 11) {
+        memsize = sg_get_unaligned_be16(buff + 10);
+        printf("  Processor Memory Size: %d\n", memsize);
+    }
+    if (len >= 80) {
+        memset(name, 0, 65);
+        memcpy(name, buff + 16, 64);
+        printf("  Board Name: %s\n", name);
+    }
+    if (len >= 96) {
+        memset(name, 0, 65);
+        memcpy(name, buff + 80, 16);
+        printf("  Board Part Number: %s\n", name);
+    }
+    if (len >= 108) {
+        memset(name, 0, 65);
+        memcpy(name, buff + 96, 12);
+        printf("  Schematic Number: %s\n", name);
+    }
+    if (len >= 112) {
+        memset(name, 0, 65);
+        memcpy(name, buff + 108, 4);
+        printf("  Schematic Revision Number: %s\n", name);
+    }
+    if (len >= 128) {
+        memset(name, 0, 65);
+        memcpy(name, buff + 112, 16);
+        printf("  Board Serial Number: %s\n", name);
+    }
+    if (len >= 152) {
+        memset(name, 0, 65);
+        memcpy(name, buff + 144, 8);
+        printf("  Date of Manufacture: %s\n", name);
+    }
+    if (len >= 154) {
+        memset(name, 0, 65);
+        memcpy(name, buff + 152, 2);
+        printf("  Board Revision: %s\n", name);
+    }
+    if (len >= 158) {
+        memset(name, 0, 65);
+        memcpy(name, buff + 154, 4);
+        printf("  Board Identifier: %s\n", name);
+    }
 
     return;
 }
@@ -376,11 +395,11 @@ decode_rdac_vpd_c1(uint8_t * buff, int len)
     int i, n, v, r, m, p, d, y, num_part;
     char part[5];
 
-    if (len < 3) {
+    if (len < 14) {
         pr2serr("Firmware Version VPD page length too short=%d\n", len);
         return;
     }
-    if (buff[4] != 'f' && buff[5] != 'w' && buff[6] != 'r') {
+    if (buff[4] != 'f' || buff[5] != 'w' || buff[6] != 'r') {
         pr2serr("Invalid page identifier %c%c%c%c, decoding not possible.\n",
                 buff[4], buff[5], buff[6], buff[7]);
         return;
@@ -526,7 +545,7 @@ decode_rdac_vpd_c8(uint8_t * buff, int len)
     int label_len;
     char uuid[33];
     int uuid_len;
-    uint8_t port_id[128];
+    uint8_t port_id[224]; /* RFC 3720 iSCSI names can be up to 223 bytes */
     int n;
 
     if (len < 0xab) {
@@ -541,11 +560,14 @@ decode_rdac_vpd_c8(uint8_t * buff, int len)
     }
 
     uuid_len = buff[11];
+    if (uuid_len > 16)
+        uuid_len = 16;
 
     for (i = 0, c = uuid; i < uuid_len; i++) {
         sprintf(c,"%02x",buff[12 + i]);
         c += 2;
     }
+    *c = '\0';
 
     printf("  Volume Unique Identifier: %s\n", uuid);
 #ifndef SG_LIB_MINGW
@@ -559,20 +581,27 @@ decode_rdac_vpd_c8(uint8_t * buff, int len)
 #endif
     memset(label, 0, 61);
     label_len = buff[28];
+    if (label_len > (int)sizeof(label))
+        label_len = (int)sizeof(label);
     for(i = 0; i < (label_len - 1); ++i)
         *(label + i) = buff[29 + (2 * i) + 1];
     printf("  Volume User Label: %s\n", label);
 
     uuid_len = buff[89];
+    if (uuid_len > 16)
+        uuid_len = 16;
 
     for (i = 0, c = uuid; i < uuid_len; i++) {
         sprintf(c,"%02x",buff[90 + i]);
         c += 2;
     }
+    *c = '\0';
 
     printf("  Storage Array Unique Identifier: %s\n", uuid);
     memset(label, 0, 61);
     label_len = buff[106];
+    if (label_len > (int)sizeof(label))
+        label_len = (int)sizeof(label);
     for(i = 0; i < (label_len - 1); ++i)
         *(label + i) = buff[107 + (2 * i) + 1];
     printf("  Storage Array User Label: %s\n", label);
@@ -586,7 +615,7 @@ decode_rdac_vpd_c8(uint8_t * buff, int len)
 
     /* Initiator transport ID */
     if ( buff[10] & 0x01 ) {
-        memset(port_id, 0, 128);
+        memset(port_id, 0, sizeof(port_id));
         printf("  Transport Protocol: ");
         switch (buff[175] & 0x0F) {
         case TPROTO_FCP: /* FC */
@@ -602,7 +631,12 @@ decode_rdac_vpd_c8(uint8_t * buff, int len)
         case TPROTO_ISCSI: /* iSCSI */
             printf("iSCSI\n");
             n = sg_get_unaligned_be32(buff + 177);
+            if (n > (int)sizeof(port_id) - 1)
+                n = (int)sizeof(port_id) - 1;
+            if (n > len - 179)
+                n = len - 179;
             memcpy(port_id, &buff[179], n);
+            port_id[n] = '\0';
             n = 179 + n;
             break;
         case TPROTO_SAS: /* SAS */
@@ -616,7 +650,7 @@ decode_rdac_vpd_c8(uint8_t * buff, int len)
 
         printf("  Initiator Port Identifier: %s\n", port_id);
         if ( buff[10] & 0x02 ) {
-            memset(port_id, 0, 128);
+            memset(port_id, 0, sizeof(port_id));
             memcpy(port_id, &buff[n], 8);
             printf("  Supplemental Vendor ID: %s\n", port_id);
         }
@@ -1035,7 +1069,7 @@ decode_vpd_d2_hit(uint8_t * b, int blen)
    unsupported page */
 int
 svpd_decode_vendor(struct sg_pt_base * ptvp, struct opts_t * op,
-		   sgj_opaque_p jop, int off)
+                   sgj_opaque_p jop, int off)
 {
     bool as_json;
     int len, pdt, pn, dhex;
@@ -1050,7 +1084,7 @@ svpd_decode_vendor(struct sg_pt_base * ptvp, struct opts_t * op,
     as_json = jsp->pr_as_json;
     dhex = op->do_hex;
     if (dhex < 0)
-	dhex = -dhex;
+        dhex = -dhex;
     pn = op->vpd_pn;
 
     switch (pn) {       /* VPD codes that we support vendor pages for */
@@ -1103,9 +1137,9 @@ svpd_decode_vendor(struct sg_pt_base * ptvp, struct opts_t * op,
             break;
         case 0xc0:
             if (dhex > 0) {
-		if (dhex > 2)
-		    named_hhh_output(NULL, rp, len, op);
-		else
+                if (dhex > 2)
+                    named_hhh_output(NULL, rp, len, op);
+                else
                     hex2stdout(rp, len, no_ascii_4hex(op));
             } else if (VPD_VP_SEAGATE == op->vend_prod_num)
                 decode_firm_vpd_c0_sea(rp, len);
@@ -1129,9 +1163,9 @@ svpd_decode_vendor(struct sg_pt_base * ptvp, struct opts_t * op,
             break;
         case 0xc1:
             if (dhex > 0) {
-		if (dhex > 2)
-		    named_hhh_output(NULL, rp, len, op);
-		else
+                if (dhex > 2)
+                    named_hhh_output(NULL, rp, len, op);
+                else
                     hex2stdout(rp, len, no_ascii_4hex(op));
             } else if (VPD_VP_SEAGATE == op->vend_prod_num)
                 decode_date_code_vpd_c1_sea(rp, len);
@@ -1146,9 +1180,9 @@ svpd_decode_vendor(struct sg_pt_base * ptvp, struct opts_t * op,
             break;
         case 0xc2:
             if (dhex > 0) {
-		if (dhex > 2)
-		    named_hhh_output(NULL, rp, len, op);
-		else
+                if (dhex > 2)
+                    named_hhh_output(NULL, rp, len, op);
+                else
                     hex2stdout(rp, len, no_ascii_4hex(op));
             } else if (VPD_VP_RDAC == op->vend_prod_num) {
                 if (as_json)
@@ -1162,9 +1196,9 @@ svpd_decode_vendor(struct sg_pt_base * ptvp, struct opts_t * op,
             break;
         case 0xc3:
             if (dhex > 0) {
-		if (dhex > 2)
-		    named_hhh_output(NULL, rp, len, op);
-		else
+                if (dhex > 2)
+                    named_hhh_output(NULL, rp, len, op);
+                else
                     hex2stdout(rp, len, no_ascii_4hex(op));
             } else if (VPD_VP_SEAGATE == op->vend_prod_num)
                 decode_dev_beh_vpd_c3_sea(rp, len);
@@ -1177,9 +1211,9 @@ svpd_decode_vendor(struct sg_pt_base * ptvp, struct opts_t * op,
             break;
         case 0xc4:
             if (dhex > 0) {
-		if (dhex > 2)
-		    named_hhh_output(NULL, rp, len, op);
-		else
+                if (dhex > 2)
+                    named_hhh_output(NULL, rp, len, op);
+                else
                     hex2stdout(rp, len, no_ascii_4hex(op));
             } else if (VPD_VP_RDAC == op->vend_prod_num)
                 decode_rdac_vpd_c4(rp, len);
@@ -1190,9 +1224,9 @@ svpd_decode_vendor(struct sg_pt_base * ptvp, struct opts_t * op,
             break;
         case 0xc5:
             if (dhex > 0) {
-		if (dhex > 2)
-		    named_hhh_output(NULL, rp, len, op);
-		else
+                if (dhex > 2)
+                    named_hhh_output(NULL, rp, len, op);
+                else
                     hex2stdout(rp, len, no_ascii_4hex(op));
             } else if (VPD_VP_HP_LTO == op->vend_prod_num)
                 decode_hp_lto_vpd_cx(rp, len, pn);
@@ -1201,9 +1235,9 @@ svpd_decode_vendor(struct sg_pt_base * ptvp, struct opts_t * op,
             break;
         case 0xc8:
             if (dhex > 0) {
-		if (dhex > 2)
-		    named_hhh_output(NULL, rp, len, op);
-		else
+                if (dhex > 2)
+                    named_hhh_output(NULL, rp, len, op);
+                else
                     hex2stdout(rp, len, no_ascii_4hex(op));
             } else if (VPD_VP_RDAC == op->vend_prod_num)
                 decode_rdac_vpd_c8(rp, len);
@@ -1212,9 +1246,9 @@ svpd_decode_vendor(struct sg_pt_base * ptvp, struct opts_t * op,
             break;
         case 0xc9:
             if (dhex > 0) {
-		if (dhex > 2)
-		    named_hhh_output(NULL, rp, len, op);
-		else
+                if (dhex > 2)
+                    named_hhh_output(NULL, rp, len, op);
+                else
                     hex2stdout(rp, len, no_ascii_4hex(op));
             } else if (VPD_VP_RDAC == op->vend_prod_num) {
                 if (as_json)
@@ -1226,9 +1260,9 @@ svpd_decode_vendor(struct sg_pt_base * ptvp, struct opts_t * op,
             break;
         case 0xca:
             if (dhex > 0) {
-		if (dhex > 2)
-		    named_hhh_output(NULL, rp, len, op);
-		else
+                if (dhex > 2)
+                    named_hhh_output(NULL, rp, len, op);
+                else
                     hex2stdout(rp, len, no_ascii_4hex(op));
             } else if (VPD_VP_RDAC == op->vend_prod_num)
                 decode_rdac_vpd_ca(rp, len);
@@ -1237,9 +1271,9 @@ svpd_decode_vendor(struct sg_pt_base * ptvp, struct opts_t * op,
             break;
         case 0xd0:
             if (dhex > 0) {
-		if (dhex > 2)
-		    named_hhh_output(NULL, rp, len, op);
-		else
+                if (dhex > 2)
+                    named_hhh_output(NULL, rp, len, op);
+                else
                     hex2stdout(rp, len, no_ascii_4hex(op));
             } else if (VPD_VP_RDAC == op->vend_prod_num)
                 decode_rdac_vpd_d0(rp, len);
@@ -1248,9 +1282,9 @@ svpd_decode_vendor(struct sg_pt_base * ptvp, struct opts_t * op,
             break;
         case 0xd1:
             if (dhex > 0) {
-		if (dhex > 2)
-		    named_hhh_output(NULL, rp, len, op);
-		else
+                if (dhex > 2)
+                    named_hhh_output(NULL, rp, len, op);
+                else
                     hex2stdout(rp, len, no_ascii_4hex(op));
             } else if (VPD_VP_WDC_HITACHI == op->vend_prod_num)
                 decode_vpd_d1_hit(rp, len);
@@ -1259,9 +1293,9 @@ svpd_decode_vendor(struct sg_pt_base * ptvp, struct opts_t * op,
             break;
         case 0xd2:
             if (dhex > 0) {
-		if (dhex > 2)
-		    named_hhh_output(NULL, rp, len, op);
-		else
+                if (dhex > 2)
+                    named_hhh_output(NULL, rp, len, op);
+                else
                     hex2stdout(rp, len, no_ascii_4hex(op));
             } else if (VPD_VP_WDC_HITACHI == op->vend_prod_num)
                 decode_vpd_d2_hit(rp, len);

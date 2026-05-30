@@ -1,7 +1,7 @@
 /* A utility program for copying files. Specialised for "files" that
  * represent devices that understand the SCSI command set.
  *
- * Copyright (C) 1999 - 2023 D. Gilbert and P. Allworth
+ * Copyright (C) 1999 - 2026 D. Gilbert and P. Allworth
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
@@ -76,7 +76,7 @@
 #include "sg_pr2serr.h"
 
 
-static const char * version_str = "1.28 20231203";
+static const char * version_str = "1.30 20260523";
 
 static const char * my_name = "sgm_dd: ";
 
@@ -1019,9 +1019,14 @@ main(int argc, char * argv[])
         sg_rep_invocation(my_name, version_str, argc, argv, stderr);
 
     for (k = 1; k < argc; k++) {
-        if (argv[k])
-            snprintf(str, STR_SZ, "%s", argv[k]);
-        else
+        if (argv[k]) {
+            n = (int)strlen(argv[k]);
+            if ((0 == n) || ((1 == n) && (' ' == argv[k][0])))
+                continue;       /* skip empty or single space arguments */
+            n = (n < STR_SZ) ? n : (STR_SZ - 1);
+            memcpy(str, argv[k], n);    /* truncate if argv[k] too long */
+            str[n] = '\0';
+        } else
             continue;
         for (key = str, buf = key; *buf && *buf != '=';)
             buf++;
@@ -1315,10 +1320,19 @@ main(int argc, char * argv[])
                 return sg_convert_errno(err);
             }
             else if (skip > 0) {
+#ifdef HAVE_LSEEK64
                 off64_t offset = skip;
+#else
+                off_t offset = skip;
+#endif
 
                 offset *= blk_sz;       /* could exceed 32 bits here! */
-                if (lseek64(infd, offset, SEEK_SET) < 0) {
+#ifdef HAVE_LSEEK64
+                if (lseek64(infd, offset, SEEK_SET) < 0)
+#else
+                if (lseek(infd, offset, SEEK_SET) < 0)
+#endif
+                {
                     err = errno;
                     snprintf(ebuff, EBUFF_SZ, "%scouldn't skip to "
                              "required position on %s", my_name, inf);
@@ -1428,10 +1442,19 @@ main(int argc, char * argv[])
                 }
             }
             if (seek > 0) {
+#ifdef HAVE_LSEEK64
                 off64_t offset = seek;
+#else
+                off_t offset = seek;
+#endif
 
                 offset *= blk_sz;       /* could exceed 32 bits here! */
-                if (lseek64(outfd, offset, SEEK_SET) < 0) {
+#ifdef HAVE_LSEEK64
+                if (lseek64(outfd, offset, SEEK_SET) < 0)
+#else
+                if (lseek(outfd, offset, SEEK_SET) < 0)
+#endif
+                {
                     err = errno;
                     snprintf(ebuff, EBUFF_SZ, "%scouldn't seek to "
                              "required position on %s", my_name, outf);

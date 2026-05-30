@@ -124,7 +124,7 @@
 #define _GNU_SOURCE 1
 #endif
 
-static const char * version_str = "2.46 [20221216]";
+static const char * version_str = "2.48 [20260508]";
 
 #include <stdio.h>
 #include <string.h>
@@ -913,6 +913,8 @@ get_mode_page10(struct mpage_info * mpi, int llbaa, int dbd,
         }
     }
     mpi->resp_len = (resp[0] << 8) + resp[1] + 2;
+    if (mpi->resp_len > MAX_RESP10_SIZE)
+        mpi->resp_len = MAX_RESP10_SIZE;
     if (sngl_fetch) {
         if (trace_cmd > 1) {
             off = modePageOffset(resp, mpi->resp_len, 0);
@@ -1043,6 +1045,8 @@ put_mode_page10(struct mpage_info * mpi, const uint8_t * msense10_resp,
 
     bdlen = (msense10_resp[6] << 8) + msense10_resp[7];
     resplen = (msense10_resp[0] << 8) + msense10_resp[1] + 2;
+    if (resplen > SIZEOF_BUFFER1)
+        resplen = SIZEOF_BUFFER1;
 
     cmd[0] = SMODE_SELECT_10;
     cmd[1] = 0x10 | (sp_bit ? 1 : 0); /* always set PF bit */
@@ -3639,12 +3643,14 @@ open_sg_io_dev(char * devname)
                 perror("sg ioctl failed");
                 close(fd);
                 fd = -9999;
+                break;
             }
             err = ioctl(fd, SCSI_IOCTL_GET_IDLUN, &mm_idlun);
             if (err < 0) {
                 perror("sg ioctl failed");
                 close(fd);
                 fd = -9999;
+                break;
             }
             if ((bus == bbus) &&
                 ((m_idlun.mux4 & 0xff) == (mm_idlun.mux4 & 0xff)) &&
@@ -3656,8 +3662,9 @@ open_sg_io_dev(char * devname)
             else {
                 close(fd);
                 fd = -9999;
+                break;
             }
-        }
+        }       /* end of for loop over MAX_SG_DEVS */
     }
     if (fd >= 0) {
         if ((ioctl(fd, SG_GET_VERSION_NUM, &v) < 0) || (v < 30000)) {
