@@ -18,7 +18,7 @@ jobs:
           cc: gcc
           host: x86_64-w64-mingw32
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Ubuntu packages
         run: |
           sudo apt-get -q update
@@ -33,7 +33,7 @@ jobs:
           mkdir -p ~/winbins
           cp ${{ github.workspace }}/src/*exe ~/winbins
       - name: artifact save
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: binaries_only
           path: ~/winbins/*
