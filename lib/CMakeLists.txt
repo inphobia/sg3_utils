@@ -56,12 +56,26 @@ set ( sgutils2_lib_common
 	sg_snt.c
 )
 
+# For testing it can be useful to compile C code with a C++ compiler. That
+# can be done with the following; plus adding CXX to project() line:
+#        project(<project_name> VERSION x.y.z LANGUAGES C CXX)
+## set_source_files_properties(
+##     ${sgutils2_lib_common}
+##     ${sgutils2_lib_hal}
+##     PROPERTIES LANGUAGE CXX
+## )
+
 if ( BUILD_SHARED_LIBS )
-    MESSAGE( STATUS ">> Build shared library(s) (default)" )
-    add_library(sgutils2 SHARED ${sgutils2_lib_common} ${sgutils2_lib_hal} )
-    set_target_properties(sgutils2 PROPERTIES
-        WINDOWS_EXPORT_ALL_SYMBOLS ON
-    )
+    if ( DISABLE_LIBSGUTILS )
+        MESSAGE( STATUS ">> Build sgutils2 library static, otherwise use shared library(s)" )
+        add_library(sgutils2 STATIC ${sgutils2_lib_common} ${sgutils2_lib_hal} )
+    else ( DISABLE_LIBSGUTILS )
+        MESSAGE( STATUS ">> Build shared library(s) (default)" )
+        add_library(sgutils2 SHARED ${sgutils2_lib_common} ${sgutils2_lib_hal} )
+        set_target_properties(sgutils2 PROPERTIES
+            WINDOWS_EXPORT_ALL_SYMBOLS ON
+        )
+    endif ( DISABLE_LIBSGUTILS )
 else ( BUILD_SHARED_LIBS )
     MESSAGE( STATUS ">> Build a static library" )
     add_definitions ( -static )
@@ -112,10 +126,12 @@ install(TARGETS sgutils2
 # plain libsgutils2.so name (without the release version embedded).
 # Create the directory first so this works when CPack stages components
 # into separate trees.
-install(CODE "file(MAKE_DIRECTORY \"\$ENV{DESTDIR}${CMAKE_INSTALL_FULL_LIBDIR}\")
+# Use escaped CMAKE_INSTALL_PREFIX so CPack can override it at install
+# time (CMAKE_INSTALL_FULL_LIBDIR bakes in the configure-time prefix).
+install(CODE "file(MAKE_DIRECTORY \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}\")
 file(CREATE_LINK
     \"libsgutils2-${PROJECT_VERSION}.so.2\"
-    \"\$ENV{DESTDIR}${CMAKE_INSTALL_FULL_LIBDIR}/libsgutils2.so\"
+    \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libsgutils2.so\"
     SYMBOLIC)"
     COMPONENT development
 )

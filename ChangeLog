@@ -3,7 +3,7 @@ some description at the top of its ".c" file. All utilities in the main
 directory have their own "man" pages. There is also a sg3_utils man page.
 References to github are to https://github.com/doug-gilbert/sg3_utils
 
-Changelog for pre-release sg3_utils-1.49 [20260528] [svn: r1121]
+Changelog for pre-release sg3_utils-1.49 [20260608] [svn: r1126]
   Utility specific changes:
   - rescan-scsi-bus.sh: fix multipath resize without update 
     https://github.com/doug-gilbert/sg3_utils/pull/43.diff
@@ -26,10 +26,16 @@ Changelog for pre-release sg3_utils-1.49 [20260528] [svn: r1121]
     - translation of NVMe FR field uses sg_last_n_non_blank()
     - add NVMe Information VPD page
     - clean up ATA Information VPD page
+    - rework designation descriptor handling
+    - sg_inq --export conformance for SCSI name string
+      by Paul Evans github PR #83
   - sg_lib: add sg_last_n_non_blank() for SNT FR field
     - sg_json.c fixes from lsscsi project pull #15
-    - sg_json.[hc] void sgj_haj_vs_hex_bytes_nex() for
+    - sg_json.[hc] add sgj_haj_vs_hex_bytes_nex() for
       outputing IDs as ASCII hex strings
+    - sg_json.[hc] add sgj_haj_vs_len()
+    - sg_json_sg_lib.[hc] sgj_js_designation_descriptor()
+      changed to sgj_haj_designation_descriptor()
   - sg_logs: correct tape Device statisitics lpage [0x14]
     serial number parameters [0x40 and 0x41] per
     https://github.com/doug-gilbert/sg3_utils/issues/45
@@ -58,6 +64,11 @@ Changelog for pre-release sg3_utils-1.49 [20260528] [svn: r1121]
       with cpack FreeBSD settings
     - github PR #82 by Paul Evans to get cmake output to be
       equivalent (in parity) with what Autotools produces
+    - wire option(DISABLE_LIBSGUTILS (def: OFF)) so when
+      ON sgutils2 library is static but other libraries
+      are shared objects (e.g. libc.so)
+    - github PR #84 by Paul Evans to fix cpack generated
+      Debian dev library path, needed by sdparm and ddpt
   - fixes so musl-gcc builds clean
   - start complying with T10 23-047r1 "Broadcom SNT Reference"
     document assuming T10 SNT drafts are coming
