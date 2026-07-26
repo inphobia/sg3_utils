@@ -1,15 +1,13 @@
 /*
  * Copyright (c) 1999-2026 Douglas Gilbert.
  * All rights reserved.
- * Use of this source code is governed by a BSD-style
- * license that can be found in the BSD_LICENSE file.
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
 /* NOTICE:
  *    On 5th October 2004 (v1.00) this file name was changed from sg_err.c
- *    to sg_lib.c and the previous GPL was changed to a FreeBSD license.
+ *    to sg_lib.c and the previous GPL was changed to a BSD license.
  *    The intention is to maintain this file and the related sg_lib.h file
  *    as open source and encourage their unencumbered use.
  *
@@ -1044,8 +1042,6 @@ sg_get_designation_descriptor_str(const char * lip, const uint8_t * ddp,
     piv = ((ddp[1] & 0x80) ? 1 : 0);
     assoc = ((ddp[1] >> 4) & 0x3);
     desig_type = (ddp[1] & 0xf);
-    if (print_assoc && ((cp = sg_get_desig_assoc_str(assoc))))
-        n += sg_scn3pr(b, blen, n, "%s  %s:\n", lip, cp);
     n += sg_scn3pr(b, blen, n, "%s    designator type: ", lip);
     cp = sg_get_desig_type_str(desig_type);
     if (cp)
@@ -1055,8 +1051,10 @@ sg_get_designation_descriptor_str(const char * lip, const uint8_t * ddp,
     if (cp)
         n += sg_scn3pr(b, blen, n, "%s", cp);
     n += sg_scn3pr(b, blen, n, "\n");
+    if (print_assoc && ((cp = sg_get_desig_assoc_str(assoc))))
+        n += sg_scn3pr(b, blen, n, "%s    associated with the %s\n", lip, cp);
     if (piv && ((1 == assoc) || (2 == assoc)))
-        n += sg_scn3pr(b, blen, n, "%s     transport: %s\n", lip,
+        n += sg_scn3pr(b, blen, n, "%s    transport: %s\n", lip,
                        sg_get_trans_proto_str(p_id, sizeof(e), e));
     if (dd_len_trick < 0)
         return n;
@@ -2799,7 +2797,7 @@ sg_get_nvme_cmd_status_str(uint16_t sct_sc, int b_len, char * b)
     }
     for (k = 0; (vp->name && (k < 1000)); ++k, ++vp) {
         if (s == (uint16_t)vp->value) {
-            strncpy(b, vp->name, b_len);
+            sg_strscpy(b, vp->name, b_len);
             b[b_len - 1] = '\0';
             return b;
         }
@@ -3681,7 +3679,7 @@ sg_get_llnum_nomult(const char * buf)
 /* Read ASCII hex bytes or binary from fname (a file named '-' taken as
  * stdin). If reading ASCII hex then there should be either one entry per
  * line or a comma, space, hyphen or tab separated list of bytes. If no_space
- * is set then a string of ACSII hex digits is expected, 2 perbyte.
+ * is set then a string of ACSII hex digits is expected, 2 per byte.
  * Everything from and including a '#' on a line is ignored. Returns 0 if ok,
  * or an error code. If the error code is SG_LIB_LBA_OUT_OF_RANGE then mp_arr
  * would be exceeded and both mp_arr and mp_arr_len are written to.
@@ -3800,7 +3798,7 @@ sg_f2hex_arr(const char * fname, bool as_binary, bool no_space,
             continue;
         }
         if (carry_over[0]) {
-            if (isxdigit(line[0])) {
+            if (isxdigit((unsigned char)line[0])) {
                 carry_over[1] = line[0];
                 carry_over[2] = '\0';
                 if (1 == sscanf(carry_over, "%4x", &h)) {
@@ -3839,7 +3837,8 @@ sg_f2hex_arr(const char * fname, bool as_binary, bool no_space,
             goto fini;
         }
         if (no_space) {
-            for (k = 0; isxdigit(*lcp) && isxdigit(*(lcp + 1));
+            for (k = 0; isxdigit((unsigned char)*lcp) &&
+                        isxdigit((unsigned char)*(lcp + 1));
                  ++k, lcp += 2) {
                 if (1 != sscanf(lcp, "%2x", &h)) {
                     pr2ws("%s: bad hex number in line %d, pos %d\n",
@@ -3852,7 +3851,8 @@ sg_f2hex_arr(const char * fname, bool as_binary, bool no_space,
                 else
                     mp_arr[off + k] = h;
             }
-            if (isxdigit(*lcp) && (! isxdigit(*(lcp + 1))))
+            if (isxdigit((unsigned char)*lcp) &&
+                (! isxdigit((unsigned char)*(lcp + 1))))
                 carry_over[0] = *lcp;
             off += k;
         } else {        /* (white)space separated ASCII hexadecimal bytes */
@@ -3894,7 +3894,7 @@ sg_f2hex_arr(const char * fname, bool as_binary, bool no_space,
                     ret = SG_LIB_SYNTAX_ERROR;
                     goto fini;
                 }
-            }
+            }       /* end of loop over characters in line (max 1024) */
             off += (k + 1);
         }
     }           /* end of per line loop */
@@ -4067,7 +4067,7 @@ sg_memalign(uint32_t num_bytes, uint32_t align_to, uint8_t ** buff_to_free,
         uint8_t * res;
         sg_uintptr_t align_1 = psz - 1;
 
-        wrkBuff = (uint8_t *)calloc(num_bytes + psz, 1);
+        wrkBuff = (uint8_t *)calloc(1, num_bytes + psz);
         if (NULL == wrkBuff) {
             if (buff_to_free)
                 *buff_to_free = NULL;
@@ -4158,7 +4158,8 @@ sg_set_big_endian(uint64_t val, uint8_t * to,
 }
 
 /* Returns true and exits when a byte < 0x20 or DEL is detected. If no
- * such byte is found by *(up + len - 1) then false is returned. */
+ * such byte is found by *(up + len - 1) then false is returned. Note that
+ * scan stops if null char ('\0') found and false is returned. */
 bool
 sg_has_control_char(const uint8_t * up, int len)
 {
@@ -4167,6 +4168,8 @@ sg_has_control_char(const uint8_t * up, int len)
 
     for (k = 0; k < len; ++k) {
         u = up[k];
+        if (0 == u)
+            break;
         if ((u < 0x20) || (0x7f == u))
             return true;
     }
@@ -4217,6 +4220,24 @@ sg_lib_version()
    failure. */
 
 #include <fcntl.h>
+#include <io.h>
+
+#ifdef HAVE__SETMODE
+int
+sg_set_text_mode(int fd)
+{
+    return _setmode(fd, _O_TEXT);
+}
+
+/* Set binary mode on fd. Does nothing in Unix. Returns negative number on
+   failure. */
+int
+sg_set_binary_mode(int fd)
+{
+    return _setmode(fd, _O_BINARY);
+}
+
+#elif defined(HAVE_SETMODE)
 
 int
 sg_set_text_mode(int fd)
@@ -4231,6 +4252,10 @@ sg_set_binary_mode(int fd)
 {
     return setmode(fd, O_BINARY);
 }
+
+#else
+#error "Can't find setmode() or _setmode() in MinGW"
+#endif /* HAVE__SETMODE */
 
 #else
 /* For Unix the following functions are dummies. */

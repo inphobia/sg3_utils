@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-/* sg_pt_win32 version 1.37 20260603 */
+/* sg_pt_win32 version 1.39 20260715 */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -347,6 +347,8 @@ scsi_pt_open_device(const char * device_name, bool read_only, int vb)
 
 #if 0
     oflags |= (read_only ? 0 : 0);      /* was ... ? O_RDONLY : O_RDWR) */
+#else
+    if (read_only) { }    /* suppress warning */
 #endif
     return scsi_pt_open_flags(device_name, oflags, vb);
 }
@@ -399,7 +401,7 @@ scsi_pt_open_flags(const char * device_name, int flags, int vb)
     len = (int)strlen(device_name);
     k = (int)sizeof(shp->dname);
     if (len < k)
-        strcpy(shp->dname, device_name);
+        sg_strscpy(shp->dname, device_name, len);
     else if (len == k)
         memcpy(shp->dname, device_name, k - 1);
     else        /* trim on left */
@@ -695,8 +697,8 @@ construct_scsi_pt_obj_with_fd(int dev_fd, int vb)
             }
         }
     }
-    psp = (struct sg_pt_win32_scsi *)calloc(sizeof(struct sg_pt_win32_scsi),
-                                            1);
+    psp = (struct sg_pt_win32_scsi *)calloc(1,
+                                            sizeof(struct sg_pt_win32_scsi));
     if (psp) {
         psp->dev_fd = (dev_fd < 0) ? -1 : dev_fd;
         if (shp) {
@@ -1151,7 +1153,7 @@ scsi_pt_indirect(struct sg_pt_base * vp, struct sg_pt_handle * shp,
                   "  buffer (%d bytes), try enlarging\n", psp->dxfer_len,
                   (int)sizeof(psp->swb_i.ucDataBuf));
         epsp = (struct sg_pt_win32_scsi *)
-               calloc(sizeof(struct sg_pt_win32_scsi) + extra, 1);
+               calloc(1, sizeof(struct sg_pt_win32_scsi) + extra);
         if (NULL == epsp) {
             pr2ws("%s: failed to enlarge data buffer to %d bytes\n", __func__,
                   psp->dxfer_len);
@@ -1478,9 +1480,7 @@ get_scsi_pt_os_err_str(const struct sg_pt_base * vp, int max_b_len, char * b)
     const char * cp;
 
     cp = safe_strerror(psp->os_err);
-    strncpy(b, cp, max_b_len);
-    if ((int)strlen(cp) >= max_b_len)
-        b[max_b_len - 1] = '\0';
+    sg_strscpy(b, cp, max_b_len);/* if max_b_len > 0 then b null terminated */
     return b;
 }
 

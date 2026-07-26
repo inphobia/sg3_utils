@@ -1,6 +1,6 @@
 Summary: Utilities for devices that use SCSI command sets
 Name: sg3_utils
-Version: 1.49
+Version: 1.49.5
 # Release: 1%{?dist}
 Release: 1
 License: BSD-2-Clause and GPL
@@ -84,9 +84,13 @@ fi
 %{_libdir}/*.a
 
 %changelog
-* Mon Jun 08 2026 - dgilbert at interlog dot com
+* Sat Jul 25 2026 - dgilbert at interlog dot com
+- first additions after 1.49 release
+  * sg3_utils-1.49.5
+
+* Sat Jul 18 2026 - dgilbert at interlog dot com
 - track t10 changes
-  * sg3_utils-1.48.9
+  * sg3_utils-1.49
 
 * Tue Aug 01 2023 - dgilbert at interlog dot com
 - track t10 changes

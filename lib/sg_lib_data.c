@@ -1,8 +1,6 @@
 /*
  * Copyright (c) 2007-2026 Douglas Gilbert.
  * All rights reserved.
- * Use of this source code is governed by a BSD-style
- * license that can be found in the BSD_LICENSE file.
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -24,8 +22,8 @@
  * standards. Note the version string below applies to the whole library.
  */
 
-const char * const sg_lib_version_str = "3.17 20260401";
-/* spc6r11, sbc6r02, zbc3r03 */
+const char * const sg_lib_version_str = "3.19 20260717";
+/* spc7r05, sbc6r02, zbc3r06 */
 
 
 /* indexed by pdt; those that map to own index do not decay */
@@ -125,7 +123,7 @@ const struct sg_lib_value_name_t sg_lib_normal_opcodes[] = {
     {0x37, PDT_MCHANGER, "Initialize element status with range"},
     {0x37, PDT_ALL, "Read defect data(10)"},
                         /* SBC-3 r31 recommends Read defect data(12) */
-    {0x38, PDT_DISK_ZBC, "Format with preset scan"},
+    {0x38, PDT_DISK_ZBC, "Format with preset"},
     {0x38, PDT_OCRW, "Medium scan"},
     {0x39, PDT_ALL, "Compare"},               /* obsolete in SPC-4 r11 */
     {0x3a, PDT_ALL, "Copy and verify"},       /* obsolete in SPC-4 r11 */

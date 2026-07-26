@@ -1,8 +1,6 @@
 /*
- * Copyright (c) 2004-2023 Douglas Gilbert.
+ * Copyright (c) 2004-2026 Douglas Gilbert.
  * All rights reserved.
- * Use of this source code is governed by a BSD-style
- * license that can be found in the BSD_LICENSE file.
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -33,7 +31,7 @@
 
 */
 
-static const char * version_str = "0.51 20230618";    /* mmc6r02 */
+static const char * version_str = "0.53 20260725";    /* mmc6r02 */
 
 #define MX_ALLOC_LEN 8192
 #define NAME_BUFF_SZ 64
@@ -782,12 +780,13 @@ decode_feature(int feature, uint8_t * bp, int len)
         printf("    version=%d, persist=%d, current=%d [0x%x]\n",
                ((bp[2] >> 2) & 0xf), !!(bp[2] & 0x2), !!(bp[2] & 0x1),
                feature);
-        num = len - 4;
-        n = sizeof(buff) - 1;
-        n = ((num < n) ? num : n);
-        strncpy(buff, (const char *)(bp + 4), n);
-        buff[n] = '\0';
-        printf("      Drive serial number: %s\n", buff);
+        if (len >= 4) {
+            num = len - 4;
+            n = ((num < (int)sizeof(buff)) ? num + 1 : (int)sizeof(buff));
+            sg_strscpy(buff, (const char *)(bp + 4), n);
+            printf("      Drive serial number: %s\n", buff);
+        } else
+            printf("      Drive serial number: <too short>\n");
         break;
     /* case 0x109:    Media serial number -> see 0x1d entry */
     case 0x10a:    /* Disc control blocks */

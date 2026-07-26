@@ -94,7 +94,7 @@
 #include "sg_pr2serr.h"
 
 
-static const char * version_str = "5.96 20260429";
+static const char * version_str = "5.98 20260715";
 
 #define DEF_BLOCK_SIZE 512
 #define DEF_BLOCKS_PER_TRANSFER 128
@@ -489,7 +489,7 @@ tsafe_strerror(int code, char * ebp)
     status = pthread_mutex_lock(&strerr_mut);
     if (0 != status) pr2serr("lock strerr_mut");
     cp = safe_strerror(code);
-    strncpy(ebp, cp, STRERR_BUFF_LEN);
+    sg_strscpy(ebp, cp, STRERR_BUFF_LEN);
     status = pthread_mutex_unlock(&strerr_mut);
     if (0 != status) pr2serr("unlock strerr_mut");
     ebp[STRERR_BUFF_LEN - 1] = '\0';
@@ -1450,7 +1450,7 @@ process_flags(const char * arg, struct flags_t * fp)
     char * cp;
     char * np;
 
-    strncpy(buff, arg, sizeof(buff));
+    sg_strscpy(buff, arg, sizeof(buff));
     buff[sizeof(buff) - 1] = '\0';
     if ('\0' == buff[0]) {
         pr2serr("no flag found\n");
@@ -1958,19 +1958,10 @@ main(int argc, char * argv[])
                 return sg_convert_errno(err);
             }
             else if (skip > 0) {
-#ifdef HAVE_LSEEK64
-                off64_t offset = skip;
-#else
                 off_t offset = skip;
-#endif
 
                 offset *= clp->bs;       /* could exceed 32 bits here! */
-#ifdef HAVE_LSEEK64
-                if (lseek64(clp->infd, offset, SEEK_SET) < 0)
-#else
-                if (lseek(clp->infd, offset, SEEK_SET) < 0)
-#endif
-                {
+                if (lseek(clp->infd, offset, SEEK_SET) < 0) {
                     err = errno;
                     snprintf(ebuff, EBUFF_SZ, "%scouldn't skip to required "
                              "position on %s", my_name, infn);
@@ -2028,19 +2019,10 @@ main(int argc, char * argv[])
                 }
             }
             if (seek > 0) {
-#ifdef HAVE_LSEEK64
-                off64_t offset = seek;
-#else
                 off_t offset = seek;
-#endif
 
                 offset *= clp->bs;       /* could exceed 32 bits here! */
-#ifdef HAVE_LSEEK64
-                if (lseek64(clp->outfd, offset, SEEK_SET) < 0)
-#else
-                if (lseek(clp->outfd, offset, SEEK_SET) < 0)
-#endif
-                {
+                if (lseek(clp->outfd, offset, SEEK_SET) < 0) {
                     err = errno;
                     snprintf(ebuff, EBUFF_SZ, "%scouldn't seek to required "
                              "position on %s", my_name, outfn);

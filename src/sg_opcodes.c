@@ -1,5 +1,5 @@
 /* A utility program originally written for the Linux OS SCSI subsystem.
- *  Copyright (C) 2004-2023 D. Gilbert
+ *  Copyright (C) 2004-2026 D. Gilbert
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2, or (at your option)
@@ -34,7 +34,7 @@
 
 #include "sg_pt.h"
 
-static const char * version_str = "1.03 20231209";    /* spc6r11 */
+static const char * version_str = "1.06 20260725";    /* spc7r05 */
 
 #define MY_NAME "sg_opcodes"
 
@@ -511,7 +511,7 @@ new_parse_cmd_line(struct opts_t * op, int argc, char * argv[])
             cp = strchr(optarg, ',');
             if (cp) {
                 memset(b, 0, sizeof(b));
-                strncpy(b, optarg, cp - optarg);
+                sg_strscpy(b, optarg, cp + 1 - optarg);
                 n = sg_get_num(b);
                 if ((n < 0) || (n > 255)) {
                     pr2serr("bad OP argument to '--opcode'\n");
@@ -978,8 +978,8 @@ list_all_codes(uint8_t * rsoc_buff, int rsoc_len, sgj_opaque_p jop,
         } else {            /* RCTD clear in cdb */
             /* before version 0.69 treated RWCDLP (1 bit) and CDLP (2 bits),
              * as a 3 bit field, now break them out separately */
-            int rwcdlp = (byt5 >> 2) & 0x3;
-            int cdlp = !!(0x40 & byt5);
+            int rwcdlp = !!(0x40 & byt5);
+            int cdlp = (byt5 >> 2) & 0x3;
 
             if (op->do_compact)
                 sgj_pr_hr(jsp, " %.2x%c%.4s   %s\n", bp[0],

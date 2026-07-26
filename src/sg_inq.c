@@ -1,5 +1,7 @@
 /* A utility program originally written for the Linux OS SCSI subsystem.
  * Copyright (C) 2000-2026 D. Gilbert
+ * All rights reserved.
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
@@ -30,15 +32,15 @@
 #include <inttypes.h>
 #include <errno.h>
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #ifdef SG_LIB_LINUX
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <linux/hdreg.h>
-#endif
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
 #endif
 
 #include "sg_lib.h"
@@ -55,7 +57,7 @@
 
 #include "sg_vpd_common.h"  /* for shared VPD page processing with sg_vpd */
 
-static const char * version_str = "2.62 20260604";  /* spc7r05, sbc6r02 */
+static const char * version_str = "2.65 20260713";  /* spc7r05, sbc6r02 */
 
 #define MY_NAME "sg_inq"
 
@@ -122,9 +124,8 @@ static const int rsp_buff_sz = MX_ALLOC_LEN + 1;
 static char xtra_buff[MX_ALLOC_LEN + 1];
 static char usn_buff[MX_ALLOC_LEN + 1];
 
-static void decode_desig_desc(const char * namep, int leadin_sp,
-                              uint8_t * buff, int len, struct opts_t * op,
-                              sgj_opaque_p jop);
+static void decode_desig_descs(int leadin_sp, uint8_t * buff, int len,
+                               struct opts_t * op, sgj_opaque_p jop);
 static int vpd_decode(struct sg_pt_base * ptvp, struct opts_t * op,
                       sgj_opaque_p jop, int off);
 
@@ -135,8 +136,7 @@ static int vpd_decode(struct sg_pt_base * ptvp, struct opts_t * op,
     defined(HDIO_GET_IDENTITY)
 #include <sys/ioctl.h>
 
-static int try_ata_identify(int ata_fd, int do_hex, int do_raw,
-                            int verbose);
+static int try_ata_identify(const struct opts_t * op, int ata_fd);
 static void prepare_ata_identify(const struct opts_t * op, int inhex_len);
 #endif
 
@@ -1383,7 +1383,7 @@ decode_dev_id_vpd(uint8_t * buff, int len, struct opts_t * op,
         pr2serr("%s %s %s=%d\n", dev_id_s, vpd_pg_s, lts_s, len);
         return;
     }
-    decode_desig_desc(dev_id_s, 2, buff + 4, len - 4, op, jap);
+    decode_desig_descs(0, buff + 4, len - 4, op, jap);
 }
 
 /* VPD_SCSI_PORTS   0x88  ["sp"] */
@@ -1445,15 +1445,14 @@ decode_scsi_ports_vpd_4inq(uint8_t * buff, int len, struct opts_t * op,
             return;
         }
         if (tpd_len > 0) {
-            sgj_pr_hr(jsp, " Target port descriptor(s):\n");
+            sgj_pr_hr(jsp, "  Target port descriptor(s):\n");
             if (dhex > 0)
                 hex2stdout(bp + bump + 4, tpd_len, no_ascii_4hex(op));
             else {
                 sgj_opaque_p ja2p = sgj_named_subarray_r(jsp, jo2p,
                                         "target_port_descriptor_list");
 
-                decode_desig_desc("SCSI Ports", 2, bp + bump + 4, tpd_len,
-                                  op, ja2p);
+                decode_desig_descs(2, bp + bump + 4, tpd_len, op, ja2p);
             }
         }
         bump += tpd_len + 4;
@@ -1464,28 +1463,28 @@ decode_scsi_ports_vpd_4inq(uint8_t * buff, int len, struct opts_t * op,
 /* These are target port, device server (i.e. target) and LU identifiers.
  * jap should point to the designator list (an array). */
 static void
-decode_desig_desc(const char * namep, int leadin_sp, uint8_t * buff, int len,
-                  struct opts_t * op, sgj_opaque_p jap)
+decode_desig_descs(int leadin_sp, uint8_t * buff, int blen,
+                   struct opts_t * op, sgj_opaque_p jap)
 {
     sgj_state * jsp = &op->json_st;
     uint8_t e[36];
     static const int elen = sizeof(e);
 
-    sgj_pr_hr(jsp, "%s\n", (namep ? namep : ""));
     /* Check for EMC Symmetrix "pre-SPC" designation descriptor that has no
      * 4 byte header and is a 16 byte NAA-6 identify with OUI of 06048 (EMC).
      * Note that only sg_inq does this check, not sg_vpd (nor sdparm). */
-    if ((buff[2] > 2) && (len <= (elen - 8)) && (buff[0] == 0x60)) {
-        sgj_pr_hr(jsp, "  Pre-SPC descriptor, descriptor length: %d\n", len);
-        memcpy(e + 4, buff, len);
+    if ((buff[2] > 2) && (blen <= (elen - 8)) && (buff[0] == 0x60)) {
+        sgj_pr_hr(jsp, "  Pre-SPC descriptor, descriptor length: %d\n", blen);
+        memcpy(e + 4, buff, blen);
         e[0] = 0x1;     /* Code set: 1 --> binary */
         e[1] = 0x3;     /* PIV=0, Assoc=0 --> LU; desig_type=3 --> NAA */
         e[2] = 0x0;     /* "Reserved" which means 0x0 */
-        e[3] = len;
-        filter_process_desig_descs(e, len + 4, leadin_sp, true, -1, op, jap);
-
+        e[3] = blen;
+        filter_process_desig_descs(NULL, leadin_sp, e, blen + 4, true, -1,
+                                   op, jap);
     } else
-        filter_process_desig_descs(buff, len, leadin_sp, true, -1, op, jap);
+        filter_process_desig_descs(NULL, leadin_sp, buff, blen, true, -1,
+                                   op, jap);
 }
 
 /* The --export and --json options are assumed to be mutually exclusive.
@@ -2299,7 +2298,7 @@ std_inq_process(struct sg_pt_base * ptvp, struct opts_t * op,
 #if defined(SG_LIB_LINUX) && defined(SG_SCSI_STRINGS) && \
     defined(HDIO_GET_IDENTITY)
         /* Try an ATA Identify Device command */
-        res = try_ata_identify(ptvp, op->do_hex, op->do_raw, vb);
+        res = try_ata_identify(op, get_pt_file_handle(ptvp));
         if (0 != res) {
             pr2serr("SCSI INQUIRY, NVMe Identify and fetching ATA "
                     "information failed on %s\n", op->device_name);
@@ -4115,6 +4114,8 @@ main(int argc, char * argv[])
     }
     if (op->do_long > 0)
         jsp->z_counter = op->do_long;
+    else if (! op->do_quiet)
+        jsp->z_counter = 1;
     as_json = jsp->pr_as_json;
     if (op->page_str) {
         if (op->vpd_pn >= 0) {
@@ -4477,7 +4478,7 @@ main(int argc, char * argv[])
 #if defined(SG_LIB_LINUX) && defined(SG_SCSI_STRINGS) && \
     defined(HDIO_GET_IDENTITY)
     if (op->do_ata) {
-        res = try_ata_identify(sg_fd, op->do_hex, op->do_raw, vb);
+        res = try_ata_identify(op, sg_fd);
         if (0 != res) {
             pr2serr("fetching %s failed on %s\n", ai_vpdp, op->device_name);
             ret = SG_LIB_CAT_OTHER;
@@ -4677,8 +4678,8 @@ ata_command_interface(int device, char *data, bool * atapi_flag, int verbose)
 }
 
 static void
-show_ata_identify(const struct ata_identify_device * aidp, bool atapi,
-                  int vb)
+show_ata_identify(const struct opts_t * op,
+                  const struct ata_identify_device * aidp, bool atapi)
 {
     int res;
     char model[64];
@@ -4697,7 +4698,7 @@ show_ata_identify(const struct ata_identify_device * aidp, bool atapi,
                            0, 4, sg_is_big_endian(), firm);
     firm[res] = '\0';
     printf("  %s %s %s\n", model, serial, firm);
-    if (vb) {
+    if (op->verbose || op->do_long) {
         if (atapi)
             printf("ATA IDENTIFY PACKET DEVICE response "
                    "(256 words):\n");
@@ -4724,33 +4725,34 @@ prepare_ata_identify(const struct opts_t * op, int inhex_len)
         n = 512;
     memset(&ata_ident, 0, sizeof(ata_ident));
     memcpy(&ata_ident, rsp_buff, n);
-    show_ata_identify(&ata_ident, false, op->verbose);
+    show_ata_identify(op, &ata_ident, false);
 }
 
 /* Returns 0 if successful, else errno of error */
 static int
-try_ata_identify(int ata_fd, int do_hex, int do_raw, int verbose)
+try_ata_identify(const struct opts_t * op, int ata_fd)
 {
     bool atapi;
     int res;
     struct ata_identify_device ata_ident;
 
     memset(&ata_ident, 0, sizeof(ata_ident));
-    res = ata_command_interface(ata_fd, (char *)&ata_ident, &atapi, verbose);
+    res = ata_command_interface(ata_fd, (char *)&ata_ident, &atapi,
+                                op->verbose);
     if (res)
         return res;
-    if ((2 == do_raw) || (3 == do_hex))
+    if ((2 == op->do_raw) || (3 == op->do_hex))
         dWordHex((const unsigned short *)&ata_ident, 256, -2,
                  sg_is_big_endian());
-    else if (do_raw)
+    else if (op->do_raw)
         dStrRaw((const char *)&ata_ident, 512);
     else {
-        if (do_hex) {
+        if (op->do_hex) {
             if (atapi)
                 printf("ATA IDENTIFY PACKET DEVICE response ");
             else
                 printf("ATA IDENTIFY DEVICE response ");
-            if (do_hex > 1) {
+            if (op->do_hex > 1) {
                 printf("(512 bytes):\n");
                 hex2stdout((const uint8_t *)&ata_ident, 512, 0);
             } else {
@@ -4759,7 +4761,7 @@ try_ata_identify(int ata_fd, int do_hex, int do_raw, int verbose)
                          sg_is_big_endian());
             }
         } else
-            show_ata_identify(&ata_ident, atapi, verbose);
+            show_ata_identify(op, &ata_ident, atapi);
     }
     return 0;
 }

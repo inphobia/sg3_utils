@@ -1,8 +1,11 @@
 cmake_minimum_required ( VERSION 3.10 )
 
-project(sg3_utils VERSION 1.48.9 LANGUAGES C)
+project(sg3_utils VERSION 1.49.5 LANGUAGES C)
+# releases have one decimal point (e.g. 1.49)
+# start new additions after release at '.5' (e.g. 1.49.5)
+# correction and pre-release versions have two decimal points
 # Use version number: x.y.9 to indicate pre-release of x.(y+1)
-# Example: VERSION 1.48.9 is pre-release of 1.49
+# Example: VERSION 1.49.9 is pre-release of 1.50
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
@@ -10,7 +13,16 @@ include(CMakePackageConfigHelpers)
 set ( CMAKE_C_STANDARD 99 )
 set ( CMAKE_C_STANDARD_REQUIRED ON )
 set ( CMAKE_C_EXTENSIONS OFF )
-set ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -g -Wall -W -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -DHAVE_CONFIG_H" )
+set ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -W" )
+
+add_compile_definitions ( _LARGEFILE64_SOURCE _FILE_OFFSET_BITS=64 HAVE_CONFIG_H )
+
+# The C code in this package can be compiled as C++ with a few additions
+# such as un-commenting the 2 lines below and adding CXX to the LANGUAGES
+# section of the project() statement above. Additionally see the C++
+# comments in the CMakeLists.txt scripts in the lib and src directories.
+# set ( CMAKE_CXX_STANDARD 23 )
+# set ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -W" )
 
 string(TIMESTAMP BUILD_TIME "%Y%m%d %H:%M:%S")
 
@@ -120,11 +132,9 @@ check_function_exists(getopt_long HAVE_GETOPT_LONG)
 check_function_exists(getrandom HAVE_GETRANDOM)
 check_function_exists(gettimeofday HAVE_GETTIMEOFDAY)
 check_function_exists(sysconf HAVE_SYSCONF)
-check_function_exists(lseek64 HAVE_LSEEK64)
 check_function_exists(srand48_r HAVE_SRAND48_R)
 check_function_exists(pthread_cancel HAVE_PTHREAD_CANCEL)
 check_function_exists(pthread_kill HAVE_PTHREAD_KILL)
-check_function_exists(setmode HAVE_SETMODE)
 
 # Locate platform's thread support, and set complier linker flags. See
 # /usr/share/doc/cmake-data/html/module/FindThreads.html when
@@ -176,6 +186,8 @@ elseif (MINGW)
     set(SG_LIB_WIN32 1)
     set(SG_LIB_MINGW 1)
     set(HAVE_NVME 1)
+    check_function_exists(setmode HAVE_SETMODE)
+    check_function_exists(_setmode HAVE__SETMODE)
 elseif (WIN32)
     message(STATUS ">> Windows build")
     set(OS_WIN32 1)
@@ -185,6 +197,10 @@ elseif (ANDROID)
     set(OS_ANDROID 1)
     set(SG_LIB_LINUX 1)
     set(SG_LIB_ANDROID 1)
+    CHECK_INCLUDE_FILE( "linux/major.h" HAVE_LINUX_MAJOR_H )
+    CHECK_INCLUDE_FILE( "linux/types.h" HAVE_LINUX_TYPES_H )
+    CHECK_INCLUDE_FILE( "linux/bsg.h" HAVE_LINUX_BSG_H )
+    CHECK_INCLUDE_FILE( "linux/kdev_t.h" HAVE_LINUX_KDEV_T_H )
     if (HAVE_LINUX_NVME_IOCTL_H)
         set(HAVE_NVME 1)
     endif ()
